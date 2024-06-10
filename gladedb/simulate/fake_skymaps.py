@@ -57,11 +57,12 @@ def create_uniform_skymap(nside=1024, db_id=None):
         session.execute(sa.text("ANALYZE"))
 
 
-def generate_skymap(nside, ra, dec, degrees=True):
+def generate_gaussian_skymap(nside, ra, dec, sigma, degrees=True):
 
     if degrees:
         ra = np.radians(ra)
         dec = np.radians(dec)
+        sigma = np.radians(sigma)
     theta = np.pi / 2 - dec
     phi = ra
     # Keep in RING ordering
@@ -69,17 +70,16 @@ def generate_skymap(nside, ra, dec, degrees=True):
 
     npix = hp.nside2npix(nside)
     skymap = np.zeros(npix)
-    skymap[center] = 1
-    skymap = hp.sphtfunc.smoothing(skymap, sigma=np.pi / 64)
-    skymap /= np.sum(skymap)
+    skymap[center] = 1.0
+    skymap = hp.sphtfunc.smoothing(skymap, sigma=sigma)
     skymap = hp.pixelfunc.reorder(skymap, r2n=True)
     return skymap
 
 
-def create_gaussian_skymap(ra, dec, nside=1024, db_id=None, degrees=True):
+def create_gaussian_skymap(ra, dec, sigma, nside=1024, db_id=None, degrees=True):
 
     # Make fake Gaussian skymap
-    skymap = generate_skymap(nside, ra, dec, degrees=degrees)
+    skymap = generate_gaussian_skymap(nside, ra, dec, sigma, degrees=degrees)
     tiles = make_skymap_tiles(nside, skymap, gaussian=True)
 
     engine = sa.create_engine("postgresql://localhost/gwcosmo_db")
