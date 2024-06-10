@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "gwcosmo-query"
+version = "0.1.0"
+description = "Infrastructure to set up the GLADE+ (UpGLADE) on a database for rapid querying."
+authors = ["Kendall Ackley <kendall.ackley@ligo.org>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+astropy = "*"
+astropy_healpix = "*"
+gladedb = "*"
+sqlalchemy = ">=2.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
