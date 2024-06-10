@@ -6,12 +6,17 @@ authors = ["Kendall Ackley <kendall.ackley@ligo.org>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.12"
+python = "^3.9"
 astropy = "*"
 astropy_healpix = "*"
-gladedb = "*"
+healpix_alchemy = "*"
+healpy = "*"
+numpy = "*"
+pandas = "*"
 sqlalchemy = ">=2.0"
 
+[tool.poetry.group.dev.dependencies]
+ligo-skymap = "*"
 
 [build-system]
 requires = ["poetry-core"]

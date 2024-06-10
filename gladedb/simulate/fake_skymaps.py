@@ -19,6 +19,7 @@ def make_skymap_tiles(nside, skymap_probability=None, gaussian=False):
         [uniq, skymap_probability_density], names=("UNIQ", "PROBDENSITY")
     )
     if gaussian:
+        # Reduce size of skymap (after Gaussian smoothing) for tile generation
         moc_data = moc_data[moc_data["PROBDENSITY"] > 1e-10]
 
     # Bug that pandas doesn't keep the type of the column through the apply
@@ -26,7 +27,7 @@ def make_skymap_tiles(nside, skymap_probability=None, gaussian=False):
     # TODO: Fix this
     tiles = [
         SkymapTile(
-            hpx=np.int64(row["UNIQ"]), probdensity=np.float64(row["PROBDENSITY"])
+            hpx=int(row["UNIQ"]), probdensity=np.float64(row["PROBDENSITY"])
         )
         for row in moc_data
     ]
@@ -75,10 +76,10 @@ def generate_skymap(nside, ra, dec, degrees=True):
     return skymap
 
 
-def create_gaussian_skymap(ra, dec, nside=1024, db_id=None):
+def create_gaussian_skymap(ra, dec, nside=1024, db_id=None, degrees=True):
 
     # Make fake Gaussian skymap
-    skymap = generate_skymap(nside, ra, dec, degrees=True)
+    skymap = generate_skymap(nside, ra, dec, degrees=degrees)
     tiles = make_skymap_tiles(nside, skymap, gaussian=True)
 
     engine = sa.create_engine("postgresql://localhost/gwcosmo_db")

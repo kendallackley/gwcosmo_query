@@ -107,17 +107,15 @@ def find_galaxies_in_range(ra, dec, engine, GalaxyClass, nside=1024):
 
 
 def find_galaxies_in_skymap(
-    ra, dec, skymap_id, nside, engine, GalaxyClass=Galaxy, SkymapTileClass=SkymapTile
+    skymap_id, engine, contour_level=None, GalaxyClass=Galaxy, SkymapTileClass=SkymapTile
 ):
     """
     Find the galaxies in a skymap given by a coordinate
 
     Arguments:
-    ra: float, right ascension in degrees
-    dec: float, declination in degrees
     skymap_id: int, skymap id
-    nside: int, healpix nside
     engine: sqlalchemy engine
+    contour_level: float, probability contour level. Default is None. Can take values between 0 and 1.
     GalaxyClass: sqlalchemy class. Can be Galaxy or GalaxySim
     SkymapTileClass: sqlalchemy class. Can be SkymapTile or SkymapTileSim
 
@@ -125,22 +123,48 @@ def find_galaxies_in_skymap(
     galaxy_ids: list, list of galaxy ids
     """
 
-    hpx_index = get_healpix_index_from_coord(ra, dec, nside=nside, lonlat=True)
+    # hpx_index = get_healpix_index_from_coord(ra, dec, nside=nside, lonlat=True)
     with sa.orm.Session(engine) as session:
         start_time = time.time()
         session.execute(sa.text("ANALYZE"))
-        query = sa.select(GalaxyClass.id, SkymapTileClass.id).filter(
-            SkymapTileClass.hpx.contains(hpx_index),
+        min_probdensity = 1e-10
+        if contour_level is not None:
+            # Syntax adapted from healpix-alchemy example
+            # https://github.com/skyportal/healpix-alchemy/
+            cumulative_prob = sa.func.sum(
+                    SkymapTileClass.probdensity * SkymapTileClass.hpx.area
+                ).over(
+                    order_by=SkymapTile.probdensity.desc()
+                ).label(
+                    'cumulative_prob'
+                )
+            subquery = sa.select(
+                    SkymapTileClass.probdensity,
+                    cumulative_prob
+                ).filter(
+                    SkymapTileClass.id == skymap_id
+                ).subquery()
+            min_probdensity = sa.select(
+                    sa.func.min(subquery.columns.probdensity)
+                ).filter(
+                    subquery.columns.cumulative_prob <= contour_level
+                ).scalar_subquery()
+        query = sa.select(GalaxyClass.id, SkymapTileClass.hpx).filter(
+            # SkymapTileClass.hpx.contains(hpx_index),
             SkymapTileClass.hpx.contains(GalaxyClass.hpx),
             SkymapTileClass.id == skymap_id,
+            SkymapTileClass.probdensity >= min_probdensity,
         )
 
-        galaxy_ids = session.execute(query).fetchall()
+        result = session.execute(query).fetchall()
         end_time = time.time()
 
+    galaxy_ids, skymaptile_hpxs = zip(*result)
+    unique_galaxy_ids = set(galaxy_ids)
+    unique_skymaptile_hpxs = set(skymaptile_hpxs)
     print(
         f"Query run time: {np.round(end_time - start_time, 3)} seconds, "
-        f"Number of galaxies: {len(galaxy_ids)}, nside: {nside}"
+        f"Number of galaxies: {len(unique_galaxy_ids)} over {len(unique_skymaptile_hpxs)} healpix indexes"
     )
     return galaxy_ids
 

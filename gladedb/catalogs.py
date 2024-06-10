@@ -1,7 +1,7 @@
 import pandas as pd
 import sqlalchemy as sa # type: ignore
 from sqlalchemy import orm # type: ignore
-from .classes import Base, Galaxy # noqa F401
+from .classes import Base, Galaxy # noqa: F401
 from .helpers import glade_filter
 
 
